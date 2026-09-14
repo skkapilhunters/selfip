@@ -1,15 +1,25 @@
+const http = require('http');
 const { Pool } = require('pg');
 
-// Sanitize connection string to prevent SSL alias warnings
+// Start a lightweight HTTP server for Web Service health checks
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('IP Logger Service is active\n');
+}).listen(PORT, () => {
+  console.log(`[HTTP] Health check server listening on port ${PORT}`);
+});
+
+// Sanitize connection string to prevent SSL query parameter warnings
 let dbUrl = process.env.DATABASE_URL || '';
 if (dbUrl.includes('?')) {
-  dbUrl = dbUrl.split('?')[0]; // Strip URL query params like ?sslmode=require
+  dbUrl = dbUrl.split('?')[0];
 }
 
 const pool = new Pool({
   connectionString: dbUrl,
   ssl: {
-    rejectUnauthorized: false // Bypasses self-signed certificate error
+    rejectUnauthorized: false
   }
 });
 
