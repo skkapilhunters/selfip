@@ -1,0 +1,12 @@
+{
+  "name": "ip-logger-service",
+  "version": "1.0.0",
+  "description": "Background service to record server public IP to PostgreSQL every 5 minutes",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.5"
+  }
+}
