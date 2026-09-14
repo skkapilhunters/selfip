@@ -1,14 +1,18 @@
 const { Pool } = require('pg');
 
-// Force SSL bypass for cloud PostgreSQL hosting providers
+// Sanitize connection string to prevent SSL alias warnings
+let dbUrl = process.env.DATABASE_URL || '';
+if (dbUrl.includes('?')) {
+  dbUrl = dbUrl.split('?')[0]; // Strip URL query params like ?sslmode=require
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: dbUrl,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false // Bypasses self-signed certificate error
   }
 });
 
-// Auto-create the logging table if it doesn't exist
 async function initDb() {
   const query = `
     CREATE TABLE IF NOT EXISTS server_ip_logs (
@@ -25,7 +29,6 @@ async function initDb() {
   }
 }
 
-// Fetch public IP and save to Postgres
 async function recordIp() {
   try {
     const res = await fetch('https://api.ipify.org?format=json');
@@ -39,7 +42,6 @@ async function recordIp() {
   }
 }
 
-// Main service loop
 async function startService() {
   if (!process.env.DATABASE_URL) {
     console.error('FATAL: DATABASE_URL environment variable is missing.');
