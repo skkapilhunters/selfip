@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 
-// Create Postgres connection using DATABASE_URL environment variable
+// Force SSL bypass for cloud PostgreSQL hosting providers
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Required for most cloud databases (Supabase, Render, Neon, Aiven, etc.)
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Auto-create the logging table if it doesn't exist
@@ -46,11 +47,8 @@ async function startService() {
   }
 
   await initDb();
-  
-  // Run once immediately on launch
   await recordIp();
 
-  // Run every 5 minutes (300,000 ms)
   const INTERVAL = 5 * 60 * 1000;
   setInterval(recordIp, INTERVAL);
 
