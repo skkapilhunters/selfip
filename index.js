@@ -34,31 +34,49 @@ async function initDb() {
   try {
     await pool.query(query);
     console.log('[DB] Table "server_ip_logs" verified/created.');
+    return true;
   } catch (err) {
-    console.error('[DB Error] Failed to initialize table:', err.message);
+    console.warn('[DB Warning] Failed to initialize table (will fallback to console logging):', err.message);
+    return false;
   }
 }
 
 async function recordIp() {
+  const timestamp = new Date().toISOString();
   try {
     const res = await fetch('https://api.ipify.org?format=json');
     const data = await res.json();
     const publicIp = data.ip;
 
-    await pool.query('INSERT INTO server_ip_logs (ip_address) VALUES ($1);', [publicIp]);
-    console.log(`[${new Date().toISOString()}] Successfully logged IP: ${publicIp}`);
+    let savedToDb = false;
+
+    // Try saving to database if DATABASE_URL is provided
+    if (process.env.DATABASE_URL) {
+      try {
+        await pool.query('INSERT INTO server_ip_logs (ip_address) VALUES ($1);', [publicIp]);
+        console.log(`[${timestamp}] Successfully logged IP to DB: ${publicIp}`);
+        savedToDb = true;
+      } catch (dbErr) {
+        console.warn(`[${timestamp}] [DB Warning] Could not save to database. Falling back to console log.`);
+      }
+    }
+
+    // Fallback: If DB is not configured, not connected, or failed, print it in logs
+    if (!savedToDb) {
+      console.log(`[${timestamp}] Current Server IP (Console Log): ${publicIp}`);
+    }
   } catch (err) {
-    console.error(`[${new Date().toISOString()}] Error recording IP:`, err.message);
+    console.error(`[${timestamp}] Error fetching IP address:`, err.message);
   }
 }
 
 async function startService() {
   if (!process.env.DATABASE_URL) {
-    console.error('FATAL: DATABASE_URL environment variable is missing.');
-    process.exit(1);
+    console.warn('[WARN] DATABASE_URL environment variable is missing. Running in console-only log mode.');
+  } else {
+    await initDb();
   }
 
-  await initDb();
   await recordIp();
 
   const INTERVAL = 5 * 60 * 1000;
